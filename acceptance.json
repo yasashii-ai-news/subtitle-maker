@@ -1,0 +1,138 @@
+{
+ "version": "v1",
+ "note": "全項目 failing から始める。passing にするのは確かめた証拠（ファイル・ログ・画面）を evidence に書いたときだけ。",
+ "items": [
+  {
+   "id": "A1",
+   "criterion": "`npm install` → `npm run dev` だけで起動する",
+   "status": "passing",
+   "evidence": "`npm install` → `npm run dev` で Vite が起動（checks/dev.log: VITE ready, http://localhost:5199/）。その URL を Chrome で操作して 1分素材の字幕 21 枚を作成（checks/e2e-dev-state.srt, ログ: 'できました：字幕 21 枚'）。"
+  },
+  {
+   "id": "A2",
+   "criterion": "`npm run build` の `dist/` を、サブパス付きの静的配信（例 `http://localhost:xxxx/subtitle-maker/`）で開いても全機能が動く",
+   "status": "passing",
+   "evidence": "`npm run build` の dist/ を checks/serve.mjs で http://localhost:4173/subtitle-maker/ に配信し、Chrome で全工程（読み込み→字幕作成→一覧操作→SRT/VTT/テキスト書き出し）が動作（checks/e2e-1min-screen.png, checks/e2e-full-run1.srt, checks/e2e-edit.log）。vite.config.ts は base: './'、ORT の wasm も dist/assets に同梱。"
+  },
+  {
+   "id": "A3",
+   "criterion": "動画・音声・台本が外部に送られない（通信はモデルのダウンロードだけ）",
+   "status": "passing",
+   "evidence": "Playwright で全リクエストを記録（checks/*-network.json）。初回は huggingface.co と us.aws.cdn.hf.co（HF のファイル配信）だけ、HF 以外への通信は 0 件（'non-HF external requests 0'）。ONNX Runtime の wasm は CDN ではなく dist/assets から読む（src/worker.ts）。音声・台本は Worker への postMessage のみで送信処理は無い。"
+  },
+  {
+   "id": "A4",
+   "criterion": "2回目の起動ではモデルを再ダウンロードしない",
+   "status": "passing",
+   "evidence": "同じブラウザプロフィールで2回目に起動した実行では外部リクエスト 0 件（checks/formats/e2e-mp3-network.json: external [] / hfFiles []）。モデルは Cache API 'transformers-cache' に保存（checks/cache-info.mjs の結果: encoder_model_fp16.onnx, decoder_model_merged_q4f16.onnx 等）。Transformers.js が dtype を 'model' キーで引いて未使用の fp32 ファイルへ問い合わせる問題を src/worker.ts で回避済み。"
+  },
+  {
+   "id": "A5",
+   "criterion": "README に使い方・置き方・既定モデルの理由・苦手なことがある",
+   "status": "passing",
+   "evidence": "README.md に『使い方』『GitHub Pages への置き方』（Actions の .github/workflows/deploy.yml 同梱・手で置く方法）『既定モデルとその理由』（base/small/large-v3-turbo の比較）『できないこと・苦手なこと』の節がある。"
+  },
+  {
+   "id": "A6",
+   "criterion": "処理中も画面が固まらず、進み具合が見える",
+   "status": "passing",
+   "evidence": "Whisper は Web Worker で実行。本編処理中に 100ms ごとのタイマー遅れを測定し最大 141〜208ms（checks/e2e-full-run1.log / run2.log の ui lag）＝画面は固まらない。進み具合はバーと文字で表示（記録された表示: '音声を取り出しています…' 'モデルをダウンロード中（初回だけ）… # / # MB' '聞き取り中 #/#（#秒 / #分#秒） 残り約#分#秒' 'できました…'）。"
+  },
+  {
+   "id": "F1",
+   "criterion": "mp4・mov・wav・m4a・mp3 を読み込める",
+   "status": "passing",
+   "evidence": "mp4（testdata）・mov・wav・m4a・mp3（checks/formats/ に ffmpeg で作成）をそれぞれアプリに入れ、すべて『できました：字幕 21 枚』（checks/formats/e2e-*.srt）。読み込みはブラウザ内の decodeAudioData（src/audio.ts）。"
+  },
+  {
+   "id": "F2",
+   "criterion": "段落のある台本を貼って字幕を作れる",
+   "status": "passing",
+   "evidence": "段落のある testdata/script-full.txt（55行・段落区切りあり）を貼って本編 159 枚の字幕を作成（checks/e2e-full-run1.srt, checks/e2e-full-run1-screen.png）。"
+  },
+  {
+   "id": "F3",
+   "criterion": "一覧で行をクリックするとその場面から再生される",
+   "status": "passing",
+   "evidence": "checks/e2e-edit.log（checks/e2e-edit.mjs）: 5行目（開始 11.20s）をクリック → video.currentTime 11.43（再生中）・paused=false・プレビューにその字幕『数字が回って/光るカウントアップに、』が表示。"
+  },
+  {
+   "id": "F4",
+   "criterion": "文字の修正・時間の微調整・分割・結合ができ、プレビューと書き出しに反映される",
+   "status": "passing",
+   "evidence": "checks/e2e-edit.mjs: 文字を『光るカウントアップ！（修正）』に修正・開始+0.1（11.20→11.30）・終了−0.1（13.46→13.36）→ プレビューの重ね字幕に修正文が出て、書き出した SRT の5番が『00:00:11,300 --> 00:00:13,360 数字が回って/光るカウントアップ！（修正）』（checks/e2e-edit-edited-download.srt）。分割で 22→23 行（『After Effectsを』『使わずに作りました』）、結合で 23→22 行に戻る。"
+  },
+  {
+   "id": "F5",
+   "criterion": "SRT・VTT・テキストで書き出せる（SRT は一般的な編集ソフトで読める形式）",
+   "status": "passing",
+   "evidence": "SRT・VTT・テキストをボタンからダウンロード（ファイル名は動画名に合わせ sample-full.srt / .vtt / .txt）。SRT は 連番・HH:MM:SS,mmm --> HH:MM:SS,mmm・本文・空行、CRLF、UTF-8 BOM 付き。checks/validate-srt.ts で書式を確認（'SRT format OK'）。"
+  },
+  {
+   "id": "F6",
+   "criterion": "台本なしでも字幕を作れる",
+   "status": "passing",
+   "evidence": "台本を空にして 1分素材で実行 → 聞き取った文字で 19 枚（checks/e2e-noscript-state.srt / e2e-noscript.srt）。"
+  },
+  {
+   "id": "Q1",
+   "criterion": "字幕の文字は台本の文字だけでできている（台本にない文字が混ざらない）",
+   "status": "passing",
+   "evidence": "checks/validate-srt.ts: 書き出した本編 SRT の文字（空白・。を除く）をつなげると台本（同）と完全一致 'identical sequence: true'（3158 字＝3158 字）。台本にない文字は 0。1分素材も同様（395 字）。"
+  },
+  {
+   "id": "Q2",
+   "criterion": "読まれた台本の文は、漏れなく・順番どおり字幕になっている",
+   "status": "passing",
+   "evidence": "同上：字幕の文字列が台本と完全に同じ並び＝全文が漏れなく順番どおり（本編 159 枚・読まれていない判定 0）。"
+  },
+  {
+   "id": "Q3",
+   "criterion": "英語・数字の固有名詞（After Effects・Claude Code・12個 など）が台本の表記どおり",
+   "status": "passing",
+   "evidence": "本編 SRT で After Effects ×6・Claude Code ×6・12個 ×9 が台本の回数と一致（checks/validate-srt.ts 出力）。聞き取りは『アフターエフェクツ』『クロードコード』だが字幕は台本表記。"
+  },
+  {
+   "id": "Q4",
+   "criterion": "各字幕の開始が、実際に話し始めた瞬間から ±0.3 秒以内",
+   "status": "passing",
+   "evidence": "本編 159 枚すべての開始が、無音（BGM レベル）から声が立ち上がる点に一致（checks/snapped.ts: 'snapped to pause: 159/159'、checks/onsets.ts で音量の立ち上がりを目視）。別モデル large-v3-turbo の結果とも 159 枚すべて差 0.3 秒以内（最大 0.04 秒, checks/compare.mjs）。注：人手で付けた正解との比較はしていない。"
+  },
+  {
+   "id": "Q5",
+   "criterion": "1行16字以内・2行以内を守る",
+   "status": "passing",
+   "evidence": "checks/validate-srt.ts: 本編 159 枚・1分 21 枚とも 1行16字（全角換算）以内・2行以内、違反 0。"
+  },
+  {
+   "id": "Q6",
+   "criterion": "単語の途中で改行しない・行頭禁則を守る",
+   "status": "passing",
+   "evidence": "checks/validate-srt.ts: 行頭禁則（、。）」ー 小書き文字など）違反 0、改行位置が英字/数字/カタカナの途中になっている所 0。分割コストで『Claude|Code』『カウント|アップ』『12|個』は禁止（src/core/segment.ts）。"
+  },
+  {
+   "id": "Q7",
+   "criterion": "表示時間 0.8〜7秒・前後が重ならない",
+   "status": "passing",
+   "evidence": "checks/validate-srt.ts: 全字幕の表示時間 0.8〜7 秒・前後の重なり 0。"
+  },
+  {
+   "id": "Q8",
+   "criterion": "台本と音声が違う所を色で知らせる（台本の1文を消して試すと、その文が「読まれていない」と出る）",
+   "status": "passing",
+   "evidence": "(1) 音声から1文（11.15〜16.78秒『数字が回って…登録ボタン。』）を ffmpeg で削除した checks/full-cut.wav ＋元の台本 → その文の2枚が赤『読まれていない可能性（字幕にしません）』として一覧に残り、字幕は 157 枚（checks/e2e-cut-screen.png）。(2) 台本から1文を消した場合は、その発話が紫『台本にない発話』として出る（checks/build-check.ts の出力）。"
+  },
+  {
+   "id": "Q9",
+   "criterion": "`sample-full.mp4`（9分23秒）を既定モデルで、M1/M2 の Mac で15分以内に処理できる",
+   "status": "passing",
+   "evidence": "Apple M1・Chrome（headless, WebGPU）で sample-full.mp4（9分23秒）を既定モデル small で処理：全体 2分41秒／2分43秒（聞き取り 156.6s＋聞き直し 1.7s）。15分以内。モデルのダウンロード時間は含まない（キャッシュ済み）。"
+  },
+  {
+   "id": "Q10",
+   "criterion": "同じ入力で2回作ると同じ SRT になる",
+   "status": "passing",
+   "evidence": "本編を別々のブラウザ起動で2回作成 → ダウンロードした SRT が完全一致（shasum 824bafafeb081a7fb920411410ec16bf877f5366 が両方で同じ）。"
+  }
+ ]
+}

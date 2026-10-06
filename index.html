@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>台本どおり字幕メーカー</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='6' width='28' height='20' rx='4' fill='%23222'/%3E%3Crect x='7' y='18' width='18' height='3' rx='1.5' fill='%23fff'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>台本どおり字幕メーカー</h1>
+      <p class="tagline">動画と台本から、台本どおりの文字で SRT を作ります。動画・音声・台本はこの端末の外に出ません。</p>
+    </header>
+
+    <section class="inputs">
+      <div class="col">
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="video/mp4,video/quicktime,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/mpeg,.mp4,.mov,.wav,.m4a,.mp3" hidden />
+          <strong>① 動画か音声をここにドロップ</strong>
+          <span>またはクリックして選ぶ（mp4 / mov / wav / m4a / mp3）</span>
+          <span class="filename" id="filename"></span>
+        </label>
+        <div class="settings">
+          <label>1行の字数 <input type="number" id="maxChars" min="6" max="40" value="16" /></label>
+          <label>行数 <input type="number" id="maxLines" min="1" max="3" value="2" /></label>
+          <label><input type="checkbox" id="removePeriod" checked /> 文末の「。」を消す</label>
+          <label>モデル
+            <select id="model">
+              <option value="onnx-community/whisper-small_timestamped">small（既定・約320MB）</option>
+              <option value="onnx-community/whisper-base_timestamped">base（速い・約110MB）</option>
+              <option value="onnx-community/whisper-large-v3-turbo_timestamped">large-v3-turbo（重い・約1.5GB）</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="col grow">
+        <label for="script" class="lbl">② 台本を貼る（ふつうの文章でOK。空なら聞き取った文字で作ります）</label>
+        <textarea id="script" placeholder="ここに台本を貼り付けます"></textarea>
+      </div>
+      <div class="col actions">
+        <button id="run" class="primary" disabled>③ 字幕を作る</button>
+        <div class="progress" id="progressBox" hidden>
+          <div class="bar"><div id="bar"></div></div>
+          <div id="status" class="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <main class="work">
+      <section class="preview">
+        <div class="player">
+          <video id="video" controls playsinline></video>
+          <div class="overlay" id="overlay"></div>
+        </div>
+        <div class="export">
+          <span>④ 書き出す：</span>
+          <button id="exSrt" disabled>SRT</button>
+          <button id="exVtt" disabled>VTT</button>
+          <button id="exTxt" disabled>テキスト</button>
+        </div>
+        <ul class="legend">
+          <li><i class="sw ok"></i>台本どおり</li>
+          <li><i class="sw mismatch"></i>台本と音声が違うかも</li>
+          <li><i class="sw unread"></i>読まれていない（字幕にしない）</li>
+          <li><i class="sw extra"></i>台本にない発話（字幕にしない）</li>
+        </ul>
+      </section>
+      <section class="list">
+        <div class="listhead">
+          <span>字幕の一覧</span>
+          <span id="summary"></span>
+        </div>
+        <div id="rows" class="rows"><p class="empty">字幕を作るとここに並びます。行をクリックするとその場面から再生します。</p></div>
+      </section>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

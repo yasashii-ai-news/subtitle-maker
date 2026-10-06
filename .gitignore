@@ -1,0 +1,6 @@
+node_modules/
+dist/
+checks/chrome-profile/
+checks/*.f32
+checks/*.wav
+checks/formats/*.wav
